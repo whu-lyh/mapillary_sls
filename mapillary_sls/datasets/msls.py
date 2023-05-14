@@ -86,14 +86,14 @@ class MSLS(Dataset):
 
             # when GPS / UTM is available
             if self.mode in ['train','val']:
-                # load query data
-                qData = pd.read_csv(join(root_dir, subdir, city, 'query', 'postprocessed.csv'), index_col = 0)
-                qDataRaw = pd.read_csv(join(root_dir, subdir, city, 'query', 'raw.csv'), index_col = 0)
-
-                # load database data
+                 # load database data
                 dbData = pd.read_csv(join(root_dir, subdir, city, 'database', 'postprocessed.csv'), index_col = 0)
                 dbDataRaw = pd.read_csv(join(root_dir, subdir, city, 'database', 'raw.csv'), index_col = 0)
 
+                # load query data
+                qData = pd.read_csv(join(root_dir, subdir, city, 'query', 'postprocessed.csv'), index_col = 0)
+                qDataRaw = pd.read_csv(join(root_dir, subdir, city, 'query', 'raw.csv'), index_col = 0)
+              
                 # arange based on task
                 qSeqKeys, qSeqIdxs = self.arange_as_seq(qData, join(root_dir, subdir, city, 'query'), seq_length_q)
                 dbSeqKeys, dbSeqIdxs = self.arange_as_seq(dbData, join(root_dir, subdir, city, 'database'), seq_length_db)
@@ -110,7 +110,7 @@ class MSLS(Dataset):
                     val_frames = np.where(dbIdx[self.subtask])[0]
                     dbSeqKeys, dbSeqIdxs = self.filter(dbSeqKeys, dbSeqIdxs, val_frames)
 
-                # filter based on panorama data
+                # filter based on panorama data, remote the panorama images
                 if self.exclude_panos:
                     panos_frames = np.where((qDataRaw['pano'] == False).values)[0]
                     qSeqKeys, qSeqIdxs = self.filter(qSeqKeys, qSeqIdxs, panos_frames)
@@ -128,6 +128,8 @@ class MSLS(Dataset):
                 self.dbImages.extend(dbSeqKeys)
 
                 qData = qData.loc[unique_qSeqIdx]
+                #print(qData.type())
+                #print(qData)
                 dbData = dbData.loc[unique_dbSeqIdx]
 
                 # useful indexing functions
@@ -226,7 +228,6 @@ class MSLS(Dataset):
         self.bs = 24
 
         if mode == 'train':
-
             # for now always 1-1 lookup.
             self.negCache = np.asarray([np.empty((0,), dtype=int)]*len(self.qIdx))
 
@@ -253,6 +254,7 @@ class MSLS(Dataset):
         # print weight information
         print("#Sideways [{}/{}]; #Night; [{}/{}]".format(len(self.sideways), N, len(self.night), N))
         print("Forward and Day weighted with {:.4f}".format(1))
+        print("111111111111")
         if len(self.night) != 0:
             print("Forward and Night weighted with {:.4f}".format(1 + N/len(self.night)))
         if len(self.sideways) != 0:
@@ -277,7 +279,7 @@ class MSLS(Dataset):
             # the sequence must have the same sequence key and must have consecutive frames
             if len(np.unique(seq['sequence_key'])) == 1 and (seq['frame_number'].diff()[1:] == 1).all():
                 seq_key = ','.join([join(path, 'images', key + '.jpg') for key in seq['key']])
-
+                print("seq_key:",seq_key)
                 seq_keys.append(seq_key)
                 seq_idxs.append(seq_idx)
 
@@ -295,7 +297,6 @@ class MSLS(Dataset):
         return len(self.triplets)
 
     def new_epoch(self):
-
         # find how many subset we need to do 1 epoch
         self.nCacheSubset = math.ceil(len(self.qIdx) / self.cached_queries)
 
@@ -312,7 +313,6 @@ class MSLS(Dataset):
         self.current_subset = 0
 
     def update_subcache(self, net = None):
-
         # reset triplets
         self.triplets = []
 

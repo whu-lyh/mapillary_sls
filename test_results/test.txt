@@ -1,0 +1,8 @@
+all_recall@1: 0.010
+all_recall@5: 0.010
+all_recall@10: 0.010
+all_recall@20: 0.010
+all_map@1: 0.010
+all_map@5: 0.002
+all_map@10: 0.002
+all_map@20: 0.002
