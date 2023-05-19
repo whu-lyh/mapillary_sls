@@ -215,9 +215,12 @@ class MSLS(Dataset):
 
         # cast to np.arrays for indexing during training
         self.qIdx = np.asarray(self.qIdx)
+        #self.qIdx = np.asarray(self.qIdx,dtype=object)
         self.qImages = np.asarray(self.qImages)
         self.pIdx = np.asarray(self.pIdx)
+        #self.pIdx = np.asarray(self.pIdx,dtype=object)
         self.nonNegIdx = np.asarray(self.nonNegIdx)
+        #self.nonNegIdx = np.asarray(self.nonNegIdx,dtype=object)
         self.dbImages = np.asarray(self.dbImages)
         self.sideways = np.asarray(self.sideways)
         self.night = np.asarray(self.night)
@@ -279,7 +282,7 @@ class MSLS(Dataset):
             # the sequence must have the same sequence key and must have consecutive frames
             if len(np.unique(seq['sequence_key'])) == 1 and (seq['frame_number'].diff()[1:] == 1).all():
                 seq_key = ','.join([join(path, 'images', key + '.jpg') for key in seq['key']])
-                print("seq_key:",seq_key)
+                # print("seq_key:",seq_key)
                 seq_keys.append(seq_key)
                 seq_idxs.append(seq_idx)
 
@@ -313,12 +316,13 @@ class MSLS(Dataset):
         self.current_subset = 0
 
     def update_subcache(self, net = None):
-        # reset triplets
+        # reset triplets, list container that contains the data idx[anchor_idx,pos_idx,neg_idx]
         self.triplets = []
 
         # if there is no network associate to the cache, then we don't do any hard negative mining.
         # Instead we just create som naive triplets based on distance.
         if net is None:
+            # randomly selected one from cached queries
             qidxs = np.random.choice(len(self.qIdx), self.cached_queries, replace = False)
 
             for q in qidxs:
@@ -332,7 +336,7 @@ class MSLS(Dataset):
                 # choose a random positive (within positive range (default 10 m))
                 pidx = np.random.choice(pidxs, size = 1)[0]
 
-                # get negatives
+                # get negatives, the negatives all comes from database of the same sequence
                 while True:
                     nidxs = np.random.choice(len(self.dbImages), size = self.nNeg)
 
@@ -342,6 +346,7 @@ class MSLS(Dataset):
 
                 # package the triplet and target
                 triplet = [qidx, pidx, *nidxs]
+                # target is the indicator that shows the anchor(-1), positive(1), negative(0)
                 target = [-1, 1] + [0]*len(nidxs)
 
                 self.triplets.append((triplet, target))
@@ -444,6 +449,7 @@ class MSLS(Dataset):
 
             # package the triplet and target
             triplet = [qidx, pidx, *hardestNeg]
+            # target is the indicator that shows the anchor(-1), positive(1), negative(0)
             target = [-1, 1] + [0]*len(hardestNeg)
 
             self.triplets.append((triplet, target))
@@ -465,5 +471,5 @@ class MSLS(Dataset):
         output = [torch.stack([self.transform(Image.open(im)) for im in self.qImages[qidx].split(',')])]
         output.append(torch.stack([self.transform(Image.open(im)) for im in self.dbImages[pidx].split(',')]))
         output.extend([torch.stack([self.transform(Image.open(im)) for im in self.dbImages[idx].split(',')]) for idx in nidx])
-
+        # the size of output and target are identical, and the order matters
         return torch.cat(output), torch.tensor(target)
